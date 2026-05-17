@@ -1,0 +1,67 @@
+# LogLine Adapter Protocol
+
+Status: Draft
+Introduces: LIP-0004 LogLine Adapter Protocol
+Primary lateral source: `../source/adapter-protocol.logline`
+
+## Core law
+
+```text
+The canon does not create world-specific adapters.
+The canon defines the canonical contracts any world adapter must obey.
+```
+
+The protocol is lateral. It does not replace `source/logline.canon.logline` and
+does not add a runtime slot.
+
+## Preserved body
+
+```text
+who did this when confirmed_by if_ok if_doubt if_not status
+```
+
+## Contract families
+
+```text
+inbound_adapter
+evidence_adapter
+runtime_invocation_transport
+release_adapter
+receipt_sink
+```
+
+## Pipeline
+
+```text
+world
+  -> adapter
+  -> LogLine candidate
+  -> evidence resolution
+  -> runtime invocation
+  -> runtime judgment
+  -> receipt
+  -> release adapter, only after if_ok
+  -> world
+```
+
+`ReceiptSink` is transversal. It may persist receipts at any
+receipt-producing phase.
+
+## Requirements
+
+- An adapter MUST NOT redefine the LogLine canon.
+- External input MUST become a LogLine candidate before runtime judgment.
+- `confirmed_by` MUST be resolved or fail audibly.
+- A runtime invocation transport invokes the runtime; it does not judge.
+- A release adapter MUST NOT execute external effects unless `if_ok` was
+  selected.
+- `if_doubt` MUST NOT mutate the world by default.
+- Receipts prove scope, not universal truth.
+- Technical failure MUST NOT be silently converted into canonical `if_not`.
+- Product examples are illustrative only and are not canonical adapters.
+
+## Product examples
+
+Names such as Supabase, Cloudflare, MCP, GitHub, Slack, Gateway, Minilab,
+passport, visa, and admission are examples only unless defined outside the canon
+as concrete adapters.

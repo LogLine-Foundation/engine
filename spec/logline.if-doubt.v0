@@ -1,0 +1,64 @@
+# Canon Addendum - if_doubt as auditable simulation
+
+## Summary
+
+The current canon defines the 9-slot sentence, external canon files, runtime
+walk, branch routing, prohibitions, and lifecycle status graph.
+
+This addendum keeps the 9-slot form intact and adds one canonical upgrade:
+`if_doubt` becomes auditable simulation.
+
+## Non-breaking principles
+
+- The 9 slots remain unchanged.
+- Existing valid LogLines remain parseable.
+- `if_ok` remains the only branch that may release real consequence.
+- `if_not` remains the branch that records rejection, falsification, or denial.
+- `confirmed_by = none` still cannot release unless an explicit canon-level rule permits a narrow exception.
+
+## New normative concepts
+
+| Concept | Before addendum | With if_doubt addendum |
+|---|---|---|
+| if_doubt | suspend / ghost / clarify | auditable simulation space |
+| receipt | implicit aspiration | required shape for simulation and release |
+| ambiguity | runtime result but not official class | official conformance class |
+| digest | implemented in Rust | specified canonically |
+| runtime declaration | absent | required for conformance claims |
+
+## New route kinds
+
+The canon MAY extend `route_kinds.doubt` with:
+
+```json
+[
+  "simulate",
+  "emit_simulation_receipt",
+  "emit_doubt_trace",
+  "propose_possible_world",
+  "ask_for_evidence",
+  "remain_unreleased"
+]
+```
+
+## New prohibitions
+
+The canon SHOULD add explicit prohibitions:
+
+```text
+if_doubt execute consequence * * * * * if_not forbid status forbidden
+if_doubt silently_convert doubt_to_ok * * * * * if_not forbid status forbidden
+simulation_receipt claim execution * * * * * if_not reject status forbidden
+```
+
+These are expressed informally here. The exact 9-slot representation should be
+settled in the canon JSON and conformance corpus.
+
+## Migration guidance
+
+1. Add `ambiguous` to conformance result taxonomy.
+2. Add simulation receipt type.
+3. Add doubt trace to runtime output.
+4. Add CLI conformance runner.
+5. Add schema validation before semantic validation.
+6. Only then claim partial conformance for the addendum.

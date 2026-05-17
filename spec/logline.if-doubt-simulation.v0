@@ -1,0 +1,131 @@
+COM CERTEZAclaim had been confirmed.
+
+## 5. Simulation receipt
+
+When a LogLine routes into `if_doubt` and a simulation is performed, the runtime
+SHOULD emit a simulation receipt.
+
+Minimum shape:
+
+```json
+{
+  "receipt_kind": "simulation",
+  "canon_version": "0.2.0-draft",
+  "runtime": "logline-runtime-rs",
+  "runtime_version": "0.1.x",
+  "logline_digest": "sha256:...",
+  "branch": "doubt",
+  "reason": "receipt_missing",
+  "simulated_route": "ask_or_suspend",
+  "executed": false,
+  "released": false,
+  "observed": "missing evidence required by confirmed_by",
+  "created_at": "RFC3339 timestamp"
+}
+```
+
+A simulation receipt is evidence of a simulation. It is not evidence that the
+underlying consequence happened.
+
+For canonical JSON receipt encoding, see `receipt-encoding.md`. The receipt
+encoding profile keeps the nine LogLine slots at top level and uses
+`tuple_hash`, `result_hash`, and `receipt_hash` to distinguish tuple identity,
+result identity, and historical emission identity.
+
+## 6. Doubt trace
+
+Every `if_doubt` transition SHOULD preserve a doubt trace.
+
+Minimum shape:
+
+```json
+{
+  "branch": "doubt",
+  "reason": "receipt_missing",
+  "simulated_route": "ask_or_suspend",
+  "released": false
+}
+```
+
+Recommended reason values:
+
+```text
+receipt_missing
+evidence_missing
+schema_ambiguous
+witness_insufficient
+quorum_duplicate
+route_unknown
+time_ambiguous
+lifecycle_ambiguous
+operator_authority_missing
+runtime_capability_missing
+```
+
+## 7. Possible-world LogLine
+
+A simulation MAY generate a new LogLine candidate. A possible-world LogLine MUST
+carry an epistemic marker that prevents it from being treated as fact.
+
+Example:
+
+```logline
+runtime simulate candidate_act before_release confirmed_by missing_evidence if_ok propose_path if_doubt ask if_not discard status doubt
+```
+
+Rules:
+
+- A possible-world LogLine MAY be inspected, compared, rejected, or promoted by later evidence.
+- A possible-world LogLine MUST NOT be released merely because it was generated.
+- Promotion from possible to real requires a later runtime walk with sufficient `confirmed_by` evidence.
+
+## 8. Ambiguous class
+
+A conforming conformance suite SHOULD classify cases as:
+
+```text
+valid
+invalid
+ambiguous
+```
+
+`ambiguous` is not half-invalid. It is material that must be routed into
+`if_doubt` rather than released or rejected by guesswork.
+
+## 9. Canonical digest rule
+
+The canonical digest MUST cover exactly the 9-slot tuple:
+
+```text
+who did this when confirmed_by if_ok if_doubt if_not status
+```
+
+The canonical digest MUST NOT include CLI flags, execution timestamp, env vars,
+working directory, session id, adapter metadata, stdout, stderr, or receipt id.
+Those belong to receipts, not to the tuple identity.
+
+This digest is the `tuple_hash` in the receipt encoding profile. It is not
+replaced by JCS / RFC 8785 JSON canonicalization.
+
+## 10. Conformance obligation
+
+A runtime claiming support for this draft SHOULD expose a declaration:
+
+```json
+{
+  "runtime": "logline-runtime-rs",
+  "runtime_version": "0.1.x",
+  "canon_version": "0.2.0-draft",
+  "conformance_status": "partial",
+  "supports": [
+    "nine_slot_tuple",
+    "canonical_tuple_digest",
+    "if_doubt_trace",
+    "simulation_receipt",
+    "valid_invalid_ambiguous"
+  ]
+}
+```
+
+A runtime MUST NOT claim full conformance until it can run the conformance suite
+and emit receipts for doubt simulations without executing the consequence.
