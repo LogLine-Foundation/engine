@@ -1,0 +1,51 @@
+# Adapter Conformance
+
+Status: Draft
+Introduces: LIP-0006 Adapter Conformance
+Depends on: LIP-0004 Adapter Protocol, LIP-0005 Adapter Declaration Profile
+Primary lateral source: `../source/adapter-conformance.logline`
+
+## Core law
+
+```text
+Adapter conformance is lateral.
+Runtime conformance is canonical.
+Do not confuse them.
+```
+
+## Status values
+
+```text
+none
+partial
+full
+failed
+unknown
+```
+
+An adapter MUST NOT report `full` without a conformance report.
+
+An adapter MUST NOT claim full LogLine canon conformance merely because it
+passes adapter protocol cases.
+
+## Minimum case families
+
+```text
+adapter does not redefine canon
+external input becomes LogLine candidate
+confirmed_by is resolved or fails audibly
+runtime invocation transport invokes without judging
+release adapter requires if_ok before external effect
+if_doubt does not mutate world by default
+receipt proves scope
+receipt sink preserves hash and scope
+product examples do not become canonical adapters
+adapter manifest is auxiliary
+projection does not redefine protocol
+technical failure is not automatic if_not
+```
+
+## Runner boundary
+
+A future conformance runner may execute these cases. The runner is a projection
+and MUST NOT become canon authority.

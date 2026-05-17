@@ -1,0 +1,65 @@
+# Adapter Declaration Profile
+
+Status: Draft
+Introduces: LIP-0005 Adapter Declaration Profile
+Depends on: LIP-0004 Adapter Protocol
+Primary lateral source: `../source/adapter-declaration-profile.logline`
+
+## Purpose
+
+The Adapter Declaration Profile defines how adapters declare identity, kind,
+version, effect class, receipt scopes, and projections without becoming canon.
+
+## Declaration first
+
+Every adapter declaration MUST be expressible as a LogLine.
+
+Example:
+
+```logline
+adapter:http_inbound declare_adapter inbound_http_translation 2026-05-08T10:00:00Z confirmed_by receipt:sha256:author123 if_ok accept_adapter_declaration if_doubt quarantine_adapter if_not reject_adapter status declared
+```
+
+JSON manifests and language projections are auxiliary.
+
+## Adapter kinds
+
+```text
+inbound
+evidence
+runtime_invocation_transport
+release
+receipt_sink
+```
+
+## Effect classes
+
+```text
+none
+read
+write
+external_effect
+irreversible_external_effect
+```
+
+Greater effect requires stronger evidence.
+
+## Manifest
+
+The JSON manifest MAY help tools, but MUST NOT replace the LogLine declaration.
+
+The manifest MUST NOT introduce runtime slots and MUST NOT claim branch
+authority outside `if_ok`, `if_doubt`, `if_not`, and `status`.
+
+## Projections
+
+Allowed projections include JSON Schema, TypeScript interfaces, Rust traits,
+Python protocols, OpenAPI specs, MCP manifests, CLI flags, HTTP endpoints, and
+database schemas.
+
+Projection rule:
+
+```text
+Projections implement adapter contracts.
+Projections do not redefine adapter contracts.
+```

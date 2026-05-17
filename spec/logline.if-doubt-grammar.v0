@@ -1,0 +1,20 @@
+(* Draft EBNF delta for if_doubt simulation. This does not replace the full
+   LogLine grammar; it names the additional surface forms needed by the
+   if_doubt auditable simulation addendum. *)
+
+logline          = who, ws, did, ws, this, ws, when, ws,
+                   confirmed_by, ws, if_ok, ws, if_doubt, ws, if_not, ws, status ;
+
+if_doubt         = "if_doubt", ws, doubt_route ;
+doubt_route      = suspend_route | clarify_route | simulate_route | dispatch_route ;
+
+simulate_route   = "simulate" | "emit_simulation_receipt" | "propose_possible_world" ;
+clarify_route    = "ask" | "ask_or_suspend" | "ghost_and_clarify" | "ask_for_evidence" ;
+suspend_route    = "suspend" | "halt" | "remain_unreleased" | "mark_open" ;
+dispatch_route   = "dispatch" | "return_to_logline" ;
+
+status           = "status", ws, lifecycle_state ;
+lifecycle_state  = "draft" | "pending" | "doubt" | "confirmed" | "released" |
+                   "closed" | "failed" | "rolled_back" | "rejected" | "void" ;
+
+(* Addendum rule: simulate_route never implies execution. *)
