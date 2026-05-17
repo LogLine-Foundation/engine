@@ -1,0 +1,17 @@
+[package]
+name = "logline-did"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine did slot: verb, act, and operation naming."
+
+[lib]
+name = "logline_did"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+
+[lints]
+workspace = true

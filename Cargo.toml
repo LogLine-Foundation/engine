@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/who",
+    "crates/did",
+    "crates/this",
+    "crates/when",
+    "crates/confirmed_by",
+    "crates/if_ok",
+    "crates/if_doubt",
+    "crates/if_not",
+    "crates/status",
+    "crates/logline-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "1"
+time = { version = "0.3", features = ["formatting", "parsing", "serde"] }
+url = { version = "2", features = ["serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"

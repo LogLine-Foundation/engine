@@ -1,0 +1,17 @@
+[package]
+name = "logline-if-ok"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine if_ok slot: selected release route."
+
+[lib]
+name = "logline_if_ok"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+
+[lints]
+workspace = true

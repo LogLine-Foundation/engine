@@ -1,0 +1,17 @@
+[package]
+name = "logline-if-doubt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine if_doubt slot: suspension, clarification, and doubt dispatch."
+
+[lib]
+name = "logline_if_doubt"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+
+[lints]
+workspace = true

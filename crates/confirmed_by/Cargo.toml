@@ -1,0 +1,17 @@
+[package]
+name = "logline-confirmed-by"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine confirmed_by slot: proof, question, verification, and pivot."
+
+[lib]
+name = "logline_confirmed_by"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+
+[lints]
+workspace = true

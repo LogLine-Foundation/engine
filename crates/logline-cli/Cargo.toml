@@ -1,0 +1,17 @@
+[package]
+name = "logline-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The logline binary: command-line mouth for the 9 slot crates."
+
+[[bin]]
+name = "logline"
+path = "src/main.rs"
+
+[dependencies]
+logline-status = { path = "../status" }
+serde_json.workspace = true
+
+[lints]
+workspace = true

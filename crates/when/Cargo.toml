@@ -1,0 +1,18 @@
+[package]
+name = "logline-when"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine when slot: temporal binding and simulation phase."
+
+[lib]
+name = "logline_when"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+time.workspace = true
+
+[lints]
+workspace = true

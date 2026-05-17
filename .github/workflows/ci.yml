@@ -1,0 +1,74 @@
+name: canon
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+      - name: Runtime binary probe
+        run: |
+          cargo run --quiet --bin logline -- --version
+          cargo run --quiet --bin logline -- status
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse JSON artifacts
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = [
+              "source/logline.canon.json",
+              "spec/logline-canon.schema.json",
+              "spec/receipt-encoding.schema.json",
+              "spec/adapter-declaration.schema.json",
+              "conformance/cases.json",
+              "conformance/if-doubt-cases.json",
+              "conformance/receipt-cases.json",
+              "conformance/adapter-cases.json",
+              "examples/receipt.simulation.json",
+              "examples/receipt.passport.json",
+              "examples/receipt.admission.json",
+              "examples/receipt.execution.json",
+              "examples/adapter-declaration.inbound.json",
+              "examples/adapter-conformance.report.json",
+          ]
+
+          for path in paths:
+              json.loads(Path(path).read_text())
+          PY
+      - name: Runtime source audit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          forbidden = ("unsafe {", "unwrap(", "expect(", "panic!")
+          failures = []
+
+          for path in Path("crates").rglob("*.rs"):
+              text = path.read_text()
+              for needle in forbidden:
+                  if needle in text:
+                      failures.append(f"{path}: contains {needle}")
+
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(1)
+          PY

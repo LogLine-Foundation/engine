@@ -1,0 +1,26 @@
+[package]
+name = "logline-status"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LogLine status slot: lifecycle closure and the logline binary."
+
+[lib]
+name = "logline_status"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+logline-did = { path = "../did" }
+logline-this = { path = "../this" }
+logline-when = { path = "../when" }
+logline-confirmed-by = { path = "../confirmed_by" }
+logline-if-ok = { path = "../if_ok" }
+logline-if-doubt = { path = "../if_doubt" }
+logline-if-not = { path = "../if_not" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true
