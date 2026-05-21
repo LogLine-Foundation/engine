@@ -49,7 +49,7 @@ Rules:
 - SHOULD be dereferenceable or reproducible.
 - MUST define scope.
 - MUST NOT be generalized beyond its observed claim.
-- MAY be referenced by `receipt_hash` in `evidence.input_receipts`.
+- MAY be referenced by `content_hash` in `evidence.input_receipts`.
 - MAY become `confirmed_by` evidence for a later LogLine when its scope matches
   the later claim.
 - MUST keep the canonical slots at top level when encoded as a LogLine receipt.

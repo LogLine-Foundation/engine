@@ -136,7 +136,11 @@ pub fn canonical_tuple_digest(logline: &LogLine) -> String {
         "status": tuple.status,
     });
 
-    let canonical = canonical_json(&json_obj).expect("9-slot tuple must be serializable");
+    // Safety: json! macro output is always serializable
+    let canonical = match canonical_json(&json_obj) {
+        Ok(c) => c,
+        Err(_) => return String::new(),
+    };
     let digest = Sha256::digest(canonical.as_bytes());
     hex_lower(&digest)
 }

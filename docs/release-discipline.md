@@ -59,7 +59,12 @@ A receipt is itself a LogLine-shaped act:
 who did this when confirmed_by if_ok if_doubt if_not status
 ```
 
-with optional `result`, `evidence`, `transport`, and `hashes`.
+with a `hashes` object containing `tuple_hash`, `content_hash`, and `algorithm`
+(LIP-0007). The `id` field equals `content_hash`.
+
+A receipt MUST NOT contain top-level `result`, `evidence`, or `transport` fields.
+Those are forbidden by `logline.receipt.v0`. The `envelope_hash` lives only on
+the Envelope wrapper, never inside the receipt.
 
 The receipt does not contain a nested LogLine. Its nine canonical slots remain
 top-level fields.

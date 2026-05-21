@@ -78,7 +78,7 @@ or mutate the world.
     "if_doubt_trace",
     "simulation_receipt",
     "receipt_encoding_v0",
-    "jcs_rfc8785_receipt_hash",
+    "lip0007_three_layer_hashing",
     "conformance_runner"
   ]
 }
@@ -100,5 +100,6 @@ A runtime MUST NOT report `full` unless it can attach a conformance report for
 the declared canon version.
 
 A runtime MUST NOT claim receipt encoding conformance unless it can compute the
-existing nine-slot `tuple_hash`, JCS `result_hash`, and JCS `receipt_hash`
-according to `spec/receipt-encoding.md`.
+LIP-0007 three-layer hashes: `tuple_hash` (9-slot identity), `content_hash`
+(interpreted act), and `envelope_hash` (transport wrapper) using JCS RFC-8785
+canonicalization and SHA-256.

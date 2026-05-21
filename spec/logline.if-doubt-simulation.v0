@@ -1,4 +1,39 @@
-COM CERTEZAclaim had been confirmed.
+# if_doubt simulation spec
+
+## 1. Scope
+
+This specification defines the behaviour of the `if_doubt` branch when a LogLine
+cannot be routed to `if_ok` (insufficient evidence) or `if_not` (no contradiction
+detected). The runtime enters simulation mode: it explores what would happen,
+records the exploration, and does not release consequence.
+
+## 2. Precondition
+
+A LogLine enters `if_doubt` simulation when:
+
+- `confirmed_by` has not collapsed sufficient evidence for `if_ok`.
+- No contradiction or prohibition triggers `if_not`.
+- The runtime has a simulation capability declared in its runtime declaration.
+
+## 3. Simulation boundary
+
+A simulation MUST NOT:
+
+- Execute any real consequence (adapter calls, state mutations, releases).
+- Silently convert a doubt branch into an ok branch.
+- Emit a receipt that claims execution occurred.
+
+A simulation MAY:
+
+- Explore possible routes and record them as possible-world LogLines.
+- Ask for additional evidence via `if_doubt` route kinds.
+- Emit a simulation receipt proving the simulation was performed.
+
+## 4. Evidence requirement
+
+The `confirmed_by` slot determines whether a claim has been confirmed.
+A runtime MUST NOT release into `if_ok` unless `confirmed_by` names a
+verifiable evidence source. Absence of confirmation routes to `if_doubt`.
 
 ## 5. Simulation receipt
 
@@ -27,10 +62,9 @@ Minimum shape:
 A simulation receipt is evidence of a simulation. It is not evidence that the
 underlying consequence happened.
 
-For canonical JSON receipt encoding, see `receipt-encoding.md`. The receipt
-encoding profile keeps the nine LogLine slots at top level and uses
-`tuple_hash`, `result_hash`, and `receipt_hash` to distinguish tuple identity,
-result identity, and historical emission identity.
+For canonical receipt encoding, see LIP-0007. The receipt encoding profile keeps
+the nine LogLine slots at top level and uses `tuple_hash` and `content_hash` to
+distinguish tuple identity and interpreted-act identity.
 
 ## 6. Doubt trace
 
@@ -104,8 +138,8 @@ The canonical digest MUST NOT include CLI flags, execution timestamp, env vars,
 working directory, session id, adapter metadata, stdout, stderr, or receipt id.
 Those belong to receipts, not to the tuple identity.
 
-This digest is the `tuple_hash` in the receipt encoding profile. It is not
-replaced by JCS / RFC 8785 JSON canonicalization.
+This digest is the `tuple_hash` in the LIP-0007 three-layer hashing scheme.
+It is computed as `sha256(jcs(pick: 9 slots))` using JCS RFC-8785 canonicalization.
 
 ## 10. Conformance obligation
 
