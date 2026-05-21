@@ -52,10 +52,10 @@ fn version_probe_reports_runtime_identity() -> Result<(), Box<dyn Error>> {
         "features",
         "adapter_protocol"
     )?);
-    assert!(string_array_contains(&value, "lip_support", "LIP-0003")?);
     assert!(string_array_contains(&value, "lip_support", "LIP-0004")?);
     assert!(string_array_contains(&value, "lip_support", "LIP-0005")?);
     assert!(string_array_contains(&value, "lip_support", "LIP-0006")?);
+    assert!(string_array_contains(&value, "lip_support", "LIP-0007")?);
 
     Ok(())
 }

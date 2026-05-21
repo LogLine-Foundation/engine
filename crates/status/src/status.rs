@@ -1,3 +1,4 @@
+use crate::receipt::canonical_json;
 use logline_who::slot::{
     Branch, Operation, RunContext, RuntimeDecision, RuntimeSlot, Slot, SlotHouse, SlotResolution,
     StatusTransition,
@@ -119,42 +120,25 @@ impl<'a> CanonicalTuple<'a> {
         }
     }
 
-    fn fields(&self) -> [(&'static str, &'a str); 9] {
-        [
-            ("who", self.who),
-            ("did", self.did),
-            ("this", self.this_),
-            ("when", self.when),
-            ("confirmed_by", self.confirmed_by),
-            ("if_ok", self.if_ok),
-            ("if_doubt", self.if_doubt),
-            ("if_not", self.if_not),
-            ("status", self.status),
-        ]
-    }
 }
 
 pub fn canonical_tuple_digest(logline: &LogLine) -> String {
     let tuple = CanonicalTuple::from_logline(logline);
-    let mut hasher = Sha256::new();
+    let json_obj = serde_json::json!({
+        "who": tuple.who,
+        "did": tuple.did,
+        "this": tuple.this_,
+        "when": tuple.when,
+        "confirmed_by": tuple.confirmed_by,
+        "if_ok": tuple.if_ok,
+        "if_doubt": tuple.if_doubt,
+        "if_not": tuple.if_not,
+        "status": tuple.status,
+    });
 
-    // Digest covers the canonical 9-slot runtime tuple only.
-    // It must not include CLI flags, session state, timestamps generated during
-    // the walk, environment variables, or ledger storage metadata.
-    for (slot, value) in tuple.fields() {
-        hash_part(&mut hasher, slot);
-        hash_part(&mut hasher, value);
-    }
-
-    format!("sha256:{}", hex_lower(&hasher.finalize()))
-}
-
-fn hash_part(hasher: &mut Sha256, value: &str) {
-    let len = value.len().to_string();
-    hasher.update(len.as_bytes());
-    hasher.update(b":");
-    hasher.update(value.as_bytes());
-    hasher.update(b"\n");
+    let canonical = canonical_json(&json_obj).expect("9-slot tuple must be serializable");
+    let digest = Sha256::digest(canonical.as_bytes());
+    hex_lower(&digest)
 }
 
 fn hex_lower(bytes: &[u8]) -> String {

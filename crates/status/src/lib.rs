@@ -24,8 +24,11 @@ pub use logline_who::{
     StatusTransition, WitnessKey,
 };
 pub use receipt::{
-    canonical_json, receipt_hash, result_hash, ReceiptEncodingError, ReceiptEncodingResult,
+    canonical_json, compute_envelope_hash, content_hash, tuple_hash, ReceiptEncodingError,
+    ReceiptEncodingResult,
 };
+#[allow(deprecated)]
+pub use receipt::{receipt_hash, result_hash};
 pub use status::{
     canonical_tuple_digest, lifecycle_transition, CanonicalTuple, LedgerEntry, Lifecycle,
     LifecycleTransition, StatusLedger, StatusSlot,

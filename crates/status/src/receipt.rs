@@ -23,6 +23,18 @@ impl std::error::Error for ReceiptEncodingError {}
 
 pub type ReceiptEncodingResult<T> = std::result::Result<T, ReceiptEncodingError>;
 
+const SLOTS: [&str; 9] = [
+    "who",
+    "did",
+    "this",
+    "when",
+    "confirmed_by",
+    "if_ok",
+    "if_doubt",
+    "if_not",
+    "status",
+];
+
 pub fn canonical_json(value: &Value) -> ReceiptEncodingResult<String> {
     match value {
         Value::Null => Ok("null".to_string()),
@@ -48,21 +60,52 @@ pub fn canonical_json(value: &Value) -> ReceiptEncodingResult<String> {
     }
 }
 
-pub fn result_hash(result: &Value) -> ReceiptEncodingResult<String> {
-    sha256_json(result)
+pub fn tuple_hash(receipt: &Value) -> ReceiptEncodingResult<String> {
+    let Value::Object(object) = receipt else {
+        return Err(ReceiptEncodingError::ReceiptMustBeObject);
+    };
+
+    let mut tuple = Map::new();
+    for slot in &SLOTS {
+        if let Some(value) = object.get(*slot) {
+            tuple.insert((*slot).to_string(), value.clone());
+        }
+    }
+
+    sha256_json(&Value::Object(tuple))
 }
 
-pub fn receipt_hash(receipt: &Value) -> ReceiptEncodingResult<String> {
+pub fn content_hash(receipt: &Value) -> ReceiptEncodingResult<String> {
     let mut receipt = receipt.clone();
     let Value::Object(object) = &mut receipt else {
         return Err(ReceiptEncodingError::ReceiptMustBeObject);
     };
 
-    if let Some(Value::Object(hashes)) = object.get_mut("hashes") {
-        hashes.remove("receipt_hash");
-    }
+    object.remove("id");
+    object.remove("hashes");
 
     sha256_json(&receipt)
+}
+
+pub fn compute_envelope_hash(envelope: &Value) -> ReceiptEncodingResult<String> {
+    let mut envelope = envelope.clone();
+    let Value::Object(object) = &mut envelope else {
+        return Err(ReceiptEncodingError::ReceiptMustBeObject);
+    };
+
+    object.remove("envelope_hash");
+
+    sha256_json(&envelope)
+}
+
+#[deprecated(note = "use tuple_hash() — LIP-0003 naming superseded by LIP-0007")]
+pub fn result_hash(result: &Value) -> ReceiptEncodingResult<String> {
+    sha256_json(result)
+}
+
+#[deprecated(note = "use content_hash() — LIP-0003 naming superseded by LIP-0007")]
+pub fn receipt_hash(receipt: &Value) -> ReceiptEncodingResult<String> {
+    content_hash(receipt)
 }
 
 fn canonical_object_json(object: &Map<String, Value>) -> ReceiptEncodingResult<String> {
@@ -90,7 +133,7 @@ fn canonical_object_json(object: &Map<String, Value>) -> ReceiptEncodingResult<S
 fn sha256_json(value: &Value) -> ReceiptEncodingResult<String> {
     let canonical = canonical_json(value)?;
     let digest = Sha256::digest(canonical.as_bytes());
-    Ok(format!("sha256:{}", hex_lower(&digest)))
+    Ok(hex_lower(&digest))
 }
 
 fn hex_lower(bytes: &[u8]) -> String {

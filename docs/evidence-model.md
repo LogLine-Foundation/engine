@@ -106,19 +106,25 @@ Evidence collapse means the runtime has enough scoped evidence to route toward
 `if_ok`. It does not mean broad truth, production safety, or human-signature
 approval unless those are explicitly part of the claim and receipt.
 
-## Receipt hashes
+## Receipt hashes (LIP-0007)
 
-Receipt encoding distinguishes three identities:
+Receipt encoding distinguishes three independent hash layers:
 
 ```text
-tuple_hash    identity of exactly the nine-slot LogLine tuple
-result_hash   identity of the produced result
-receipt_hash  identity of the historical receipt emission
+tuple_hash     identity of exactly the nine-slot LogLine tuple
+content_hash   identity of the interpreted act (slots + aux + meta, minus id/hashes)
+envelope_hash  identity of the transported package (lives ONLY on the Envelope wrapper)
 ```
 
-`tuple_hash` uses the LogLine length-prefixed tuple profile.
+All three use JCS / RFC 8785 canonical JSON with SHA-256 in v0.
 
-`result_hash` and `receipt_hash` use JCS / RFC 8785 canonical JSON with SHA-256
-in v0.
+- `tuple_hash = sha256(jcs(pick: 9 slots))`
+- `content_hash = sha256(jcs(all fields except id and hashes))`
+- `envelope_hash = sha256(jcs({content, transport}))` — computed at transport boundary
 
-Changing transport changes `receipt_hash`, but not `result_hash`.
+The receipt `id` MUST equal `content_hash`. The `hashes` object contains only
+`tuple_hash`, `content_hash`, and `algorithm`. `envelope_hash` does not live
+inside the receipt — it is a property of the Envelope wrapper.
+
+Changing AUX changes `content_hash` but not `tuple_hash`.
+Changing transport changes `envelope_hash` but neither `tuple_hash` nor `content_hash`.

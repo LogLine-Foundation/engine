@@ -13,10 +13,14 @@ belong near the crate or implementation that owns them.
 - Added a local runtime release pack script that builds the binary, writes a
   checksum, emits a manifest, prepares release notes, and prints manual GitHub
   release commands without publishing by default.
-- Added LIP-0003 for LogLine receipt encoding and content addressing.
-- Added the receipt encoding spec, JSON Schema, examples, and conformance cases.
-- Clarified that `tuple_hash` uses the existing length-prefixed nine-slot tuple
-  profile while `result_hash` and `receipt_hash` use JCS / RFC 8785 JSON.
+- Added LIP-0007 three-layer receipt hashing (supersedes LIP-0003).
+- All three hashes (`tuple_hash`, `content_hash`, `envelope_hash`) use
+  JCS / RFC 8785 canonical JSON with SHA-256. Hash output is bare 64-char
+  lowercase hex (no `sha256:` prefix).
+- `tuple_hash = sha256(jcs(9 slots))`, `content_hash = sha256(jcs(all minus
+  id/hashes))`, `envelope_hash` lives only on the Envelope wrapper.
+- Receipt `id` equals `content_hash`. Forbidden fields: `result`, `evidence`,
+  `transport`.
 - Added draft LIP-0004, LIP-0005, and LIP-0006 for the lateral adapter
   protocol, adapter declarations, and adapter conformance.
 - Added lateral adapter protocol LogLine sources, specs, examples, and

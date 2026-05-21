@@ -1,18 +1,16 @@
 use logline_status::{
-    canonical_json, canonical_tuple_digest, lifecycle_transition, parse_logline, receipt_hash,
-    result_hash, run_with_context, validate_against_canon, walk, AccountableOrigin, ActorId,
-    Branch, Canon, ClarificationRequest, ClockView, DidResolution, DoubtKind, DoubtRoute,
-    EvidenceKind, EvidenceReceipt, EvidenceRequirement, EvidenceResolution, EvidenceView,
-    FixedClock, LedgerEntry, Lifecycle, LifecycleTransition, LocatedMatter, LogLine, LogLineError,
-    MatterDigest, MatterRef, Mode, Operation, OriginKind, ProblemRecord, RejectionKind,
-    RejectionRoute, ReleaseAdapter, ReleaseKind, ReleaseRoute, Result, RunContext, Slot, SlotHouse,
-    SlotResolution, StatusLedger, StatusTransition, SuspensionRecord, TemporalBinding,
-    TemporalResolution, Verb, VerbClass,
+    canonical_json, canonical_tuple_digest, content_hash, lifecycle_transition, parse_logline,
+    run_with_context, tuple_hash, validate_against_canon, walk, AccountableOrigin, ActorId, Branch,
+    Canon, ClarificationRequest, ClockView, DidResolution, DoubtKind, DoubtRoute, EvidenceKind,
+    EvidenceReceipt, EvidenceRequirement, EvidenceResolution, EvidenceView, FixedClock, LedgerEntry,
+    Lifecycle, LifecycleTransition, LocatedMatter, LogLine, LogLineError, MatterDigest, MatterRef,
+    Mode, Operation, OriginKind, ProblemRecord, RejectionKind, RejectionRoute, ReleaseAdapter,
+    ReleaseKind, ReleaseRoute, Result, RunContext, Slot, SlotHouse, SlotResolution, StatusLedger,
+    StatusTransition, SuspensionRecord, TemporalBinding, TemporalResolution, Verb, VerbClass,
 };
 use serde_json::Value;
 use std::cell::Cell;
 use std::error::Error;
-use std::path::Path;
 
 fn canon() -> Result<Canon> {
     Canon::from_json_path("examples/logline.canon.json")
@@ -20,12 +18,6 @@ fn canon() -> Result<Canon> {
 
 fn missing_test_material(name: &str) -> LogLineError {
     LogLineError::InvalidWhoOrigin(format!("missing test material: {name}"))
-}
-
-fn read_json_fixture(path: &str) -> std::result::Result<Value, Box<dyn Error>> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let text = std::fs::read_to_string(root.join(path))?;
-    Ok(serde_json::from_str(&text)?)
 }
 
 fn receipt_fixture_logline(receipt: &Value) -> std::result::Result<LogLine, Box<dyn Error>> {
@@ -1303,7 +1295,7 @@ fn tuple_digest_is_stable_for_same_9_fields() {
         canonical_tuple_digest(&left),
         canonical_tuple_digest(&right)
     );
-    assert!(canonical_tuple_digest(&left).starts_with("sha256:"));
+    assert!(canonical_tuple_digest(&left).len() == 64);
 }
 
 #[test]
@@ -1447,57 +1439,189 @@ fn status_transition_does_not_persist_without_explicit_ledger_append() -> Result
 }
 
 #[test]
-fn receipt_schema_and_examples_parse_as_json() -> std::result::Result<(), Box<dyn Error>> {
-    for path in [
-        "spec/receipt-encoding.schema.json",
-        "examples/receipt.simulation.json",
-        "examples/receipt.passport.json",
-        "examples/receipt.admission.json",
-        "examples/receipt.execution.json",
-        "conformance/receipt-cases.json",
-    ] {
-        read_json_fixture(path)?;
-    }
+fn tuple_hash_uses_jcs_canonical_json() -> std::result::Result<(), Box<dyn Error>> {
+    let receipt = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "dan",
+        "did": "rested",
+        "this": "slept_well",
+        "when": "2026-05-17T07:30:00Z",
+        "confirmed_by": "dan",
+        "if_ok": "continue_minilab_work",
+        "if_doubt": "",
+        "if_not": "",
+        "status": "claimed",
+        "json_canonicalization": "jcs-rfc8785",
+        "hashes": {
+            "tuple_hash": "6ace2eed03aa73839414db1d76a3bf08880d8ae50f5db81405c85f2b269ef1ee",
+            "content_hash": "b74954069c9135090740439e08bdd442b4b12767c4df63b504c3e6b1029ffbb8",
+            "algorithm": "sha256"
+        },
+        "id": "b74954069c9135090740439e08bdd442b4b12767c4df63b504c3e6b1029ffbb8"
+    });
 
+    assert_eq!(
+        tuple_hash(&receipt)?,
+        "6ace2eed03aa73839414db1d76a3bf08880d8ae50f5db81405c85f2b269ef1ee"
+    );
     Ok(())
 }
 
 #[test]
-fn receipt_example_hashes_match_encoding_profile() -> std::result::Result<(), Box<dyn Error>> {
-    for path in [
-        "examples/receipt.simulation.json",
-        "examples/receipt.passport.json",
-        "examples/receipt.admission.json",
-        "examples/receipt.execution.json",
-    ] {
-        let receipt = read_json_fixture(path)?;
-        let logline = receipt_fixture_logline(&receipt)?;
+fn content_hash_excludes_id_and_hashes() -> std::result::Result<(), Box<dyn Error>> {
+    let receipt = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "dan",
+        "did": "rested",
+        "this": "slept_well",
+        "when": "2026-05-17T07:30:00Z",
+        "confirmed_by": "dan",
+        "if_ok": "continue_minilab_work",
+        "if_doubt": "",
+        "if_not": "",
+        "status": "claimed",
+        "json_canonicalization": "jcs-rfc8785",
+        "hashes": {
+            "tuple_hash": "6ace2eed03aa73839414db1d76a3bf08880d8ae50f5db81405c85f2b269ef1ee",
+            "content_hash": "b74954069c9135090740439e08bdd442b4b12767c4df63b504c3e6b1029ffbb8",
+            "algorithm": "sha256"
+        },
+        "id": "b74954069c9135090740439e08bdd442b4b12767c4df63b504c3e6b1029ffbb8"
+    });
 
-        assert_eq!(
-            receipt["hashes"]["tuple_hash"]
-                .as_str()
-                .ok_or_else(|| missing_test_material("fixture tuple hash"))?,
-            canonical_tuple_digest(&logline)
-        );
-        assert_eq!(
-            receipt["hashes"]["result_hash"]
-                .as_str()
-                .ok_or_else(|| missing_test_material("fixture result hash"))?,
-            result_hash(&receipt["result"])?
-        );
-        assert_eq!(
-            receipt["hashes"]["receipt_hash"]
-                .as_str()
-                .ok_or_else(|| missing_test_material("fixture receipt hash"))?,
-            receipt_hash(&receipt)?
-        );
-    }
-
+    let computed = content_hash(&receipt)?;
+    assert_eq!(computed, "b74954069c9135090740439e08bdd442b4b12767c4df63b504c3e6b1029ffbb8");
+    assert_eq!(computed, receipt["id"].as_str().unwrap());
     Ok(())
 }
 
 #[test]
-fn result_hash_uses_canonical_json_property_order() -> std::result::Result<(), Box<dyn Error>> {
+fn content_hash_is_stable_regardless_of_json_key_order() -> std::result::Result<(), Box<dyn Error>>
+{
+    let left = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "logline_runtime",
+        "did": "simulate",
+        "this": "candidate_act",
+        "when": "2026-05-06T12:00:00Z",
+        "confirmed_by": "missing_evidence",
+        "if_ok": "record_trace",
+        "if_doubt": "simulate",
+        "if_not": "forbid_execution",
+        "status": "doubt",
+        "json_canonicalization": "jcs-rfc8785",
+        "hashes": {
+            "tuple_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "algorithm": "sha256"
+        },
+        "id": "0000000000000000000000000000000000000000000000000000000000000000"
+    });
+    let right = serde_json::json!({
+        "status": "doubt",
+        "if_not": "forbid_execution",
+        "if_doubt": "simulate",
+        "if_ok": "record_trace",
+        "confirmed_by": "missing_evidence",
+        "when": "2026-05-06T12:00:00Z",
+        "this": "candidate_act",
+        "did": "simulate",
+        "who": "logline_runtime",
+        "receipt_version": "logline.receipt.v0",
+        "json_canonicalization": "jcs-rfc8785",
+        "hashes": {
+            "algorithm": "sha256",
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "tuple_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    });
+
+    assert_eq!(content_hash(&left)?, content_hash(&right)?);
+    Ok(())
+}
+
+#[test]
+fn changing_aux_changes_content_hash_but_not_tuple_hash() -> std::result::Result<(), Box<dyn Error>>
+{
+    let base = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "dan",
+        "did": "send",
+        "this": "invoice_123",
+        "when": "2026-05-06T12:00:00Z",
+        "confirmed_by": "ana",
+        "if_ok": "execute",
+        "if_doubt": "suspend",
+        "if_not": "reject",
+        "status": "confirmed",
+        "json_canonicalization": "jcs-rfc8785"
+    });
+
+    let mut with_aux = base.clone();
+    with_aux["domain_note"] = serde_json::json!("extra context");
+
+    assert_eq!(tuple_hash(&base)?, tuple_hash(&with_aux)?);
+    assert_ne!(content_hash(&base)?, content_hash(&with_aux)?);
+    Ok(())
+}
+
+#[test]
+fn tuple_hash_matches_canonical_tuple_digest_for_same_9_slots(
+) -> std::result::Result<(), Box<dyn Error>> {
+    let receipt = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "dan",
+        "did": "send",
+        "this": "invoice_123",
+        "when": "tomorrow",
+        "confirmed_by": "ana",
+        "if_ok": "send",
+        "if_doubt": "ask",
+        "if_not": "reject",
+        "status": "pending",
+        "json_canonicalization": "jcs-rfc8785"
+    });
+
+    let logline = receipt_fixture_logline(&receipt)?;
+    assert_eq!(tuple_hash(&receipt)?, canonical_tuple_digest(&logline));
+    Ok(())
+}
+
+#[test]
+fn content_hash_ignores_id_and_hashes_values() -> std::result::Result<(), Box<dyn Error>> {
+    let mut a = serde_json::json!({
+        "receipt_version": "logline.receipt.v0",
+        "who": "dan",
+        "did": "send",
+        "this": "invoice_123",
+        "when": "2026-05-06T12:00:00Z",
+        "confirmed_by": "ana",
+        "if_ok": "execute",
+        "if_doubt": "suspend",
+        "if_not": "reject",
+        "status": "confirmed",
+        "json_canonicalization": "jcs-rfc8785",
+        "id": "0000000000000000000000000000000000000000000000000000000000000000",
+        "hashes": {
+            "tuple_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "algorithm": "sha256"
+        }
+    });
+    let b = a.clone();
+
+    a["id"] =
+        serde_json::json!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    a["hashes"]["content_hash"] =
+        serde_json::json!("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+    assert_eq!(content_hash(&a)?, content_hash(&b)?);
+    Ok(())
+}
+
+#[test]
+fn canonical_json_sorts_keys_deterministically() -> std::result::Result<(), Box<dyn Error>> {
     let left = serde_json::json!({
         "released": false,
         "executed": false,
@@ -1510,180 +1634,13 @@ fn result_hash_uses_canonical_json_property_order() -> std::result::Result<(), B
     });
 
     assert_eq!(canonical_json(&left)?, canonical_json(&right)?);
-    assert_eq!(result_hash(&left)?, result_hash(&right)?);
-    Ok(())
-}
-
-#[test]
-fn receipt_hash_uses_canonical_json_property_order() -> std::result::Result<(), Box<dyn Error>> {
-    let left = serde_json::json!({
-        "receipt_version": "logline-receipt-v0",
-        "who": "logline_runtime",
-        "did": "simulate",
-        "this": "candidate_act",
-        "when": "2026-05-06T12:00:00Z",
-        "confirmed_by": "missing_evidence",
-        "if_ok": "record_trace",
-        "if_doubt": "simulate",
-        "if_not": "forbid_execution",
-        "status": "doubt",
-        "result": {
-            "executed": false,
-            "released": false
-        },
-        "transport": {
-            "channel": "local-cli",
-            "emitter": "logline-runtime-rs"
-        },
-        "hashes": {
-            "algorithm": "sha256",
-            "tuple_hash_profile": "logline-length-prefixed-v0",
-            "json_canonicalization": "jcs-rfc8785",
-            "receipt_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-        }
-    });
-    let right = serde_json::json!({
-        "hashes": {
-            "receipt_hash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-            "json_canonicalization": "jcs-rfc8785",
-            "tuple_hash_profile": "logline-length-prefixed-v0",
-            "algorithm": "sha256"
-        },
-        "transport": {
-            "emitter": "logline-runtime-rs",
-            "channel": "local-cli"
-        },
-        "result": {
-            "released": false,
-            "executed": false
-        },
-        "status": "doubt",
-        "if_not": "forbid_execution",
-        "if_doubt": "simulate",
-        "if_ok": "record_trace",
-        "confirmed_by": "missing_evidence",
-        "when": "2026-05-06T12:00:00Z",
-        "this": "candidate_act",
-        "did": "simulate",
-        "who": "logline_runtime",
-        "receipt_version": "logline-receipt-v0"
-    });
-
-    assert_eq!(receipt_hash(&left)?, receipt_hash(&right)?);
-    Ok(())
-}
-
-#[test]
-fn changing_transport_changes_receipt_hash_only() -> std::result::Result<(), Box<dyn Error>> {
-    let mut changed = read_json_fixture("examples/receipt.simulation.json")?;
-    let original = changed.clone();
-
-    if let Value::Object(transport) = &mut changed["transport"] {
-        transport.insert(
-            "channel".to_string(),
-            Value::String("remote-export".to_string()),
-        );
-    } else {
-        return Err(Box::new(missing_test_material("receipt transport")));
-    }
-
-    assert_eq!(
-        result_hash(&original["result"])?,
-        result_hash(&changed["result"])?
-    );
-    assert_ne!(receipt_hash(&original)?, receipt_hash(&changed)?);
-    Ok(())
-}
-
-#[test]
-fn changing_result_changes_result_and_receipt_hash() -> std::result::Result<(), Box<dyn Error>> {
-    let mut changed = read_json_fixture("examples/receipt.simulation.json")?;
-    let original = changed.clone();
-
-    if let Value::Object(result) = &mut changed["result"] {
-        result.insert(
-            "observation".to_string(),
-            Value::String("different simulated observation".to_string()),
-        );
-    } else {
-        return Err(Box::new(missing_test_material("receipt result")));
-    }
-
-    assert_ne!(
-        result_hash(&original["result"])?,
-        result_hash(&changed["result"])?
-    );
-    assert_ne!(receipt_hash(&original)?, receipt_hash(&changed)?);
-    Ok(())
-}
-
-#[test]
-fn tuple_hash_ignores_result_evidence_transport() -> std::result::Result<(), Box<dyn Error>> {
-    let mut changed = read_json_fixture("examples/receipt.simulation.json")?;
-    let original = changed.clone();
-
-    changed["result"] = serde_json::json!({"changed": true});
-    changed["evidence"] = serde_json::json!({"changed": true});
-    changed["transport"] = serde_json::json!({"changed": true});
-
-    let original_line = receipt_fixture_logline(&original)?;
-    let changed_line = receipt_fixture_logline(&changed)?;
-
-    assert_eq!(
-        canonical_tuple_digest(&original_line),
-        canonical_tuple_digest(&changed_line)
-    );
-    assert_eq!(
-        original["hashes"]["tuple_hash"]
-            .as_str()
-            .ok_or_else(|| missing_test_material("fixture tuple hash"))?,
-        canonical_tuple_digest(&original_line)
-    );
-    Ok(())
-}
-
-#[test]
-fn receipt_hash_excludes_only_itself() -> std::result::Result<(), Box<dyn Error>> {
-    let mut changed = read_json_fixture("examples/receipt.simulation.json")?;
-    let original = changed.clone();
-
-    changed["hashes"]["receipt_hash"] = Value::String(
-        "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string(),
-    );
-
-    assert_eq!(receipt_hash(&original)?, receipt_hash(&changed)?);
-    Ok(())
-}
-
-#[test]
-fn simulation_receipt_fixture_never_executes_or_releases() -> std::result::Result<(), Box<dyn Error>>
-{
-    let receipt = read_json_fixture("examples/receipt.simulation.json")?;
-
-    assert_eq!(receipt["status"], "doubt");
-    assert_eq!(receipt["if_doubt"], "simulate");
-    assert_eq!(receipt["evidence"]["trace"]["branch"], "doubt");
-    assert_eq!(receipt["result"]["executed"], Value::Bool(false));
-    assert_eq!(receipt["result"]["released"], Value::Bool(false));
-    Ok(())
-}
-
-#[test]
-fn receipt_can_reference_input_receipt_hash() -> std::result::Result<(), Box<dyn Error>> {
-    let receipt = read_json_fixture("examples/receipt.passport.json")?;
-    let input = receipt["evidence"]["input_receipts"][0]
-        .as_str()
-        .ok_or_else(|| missing_test_material("input receipt hash"))?;
-
-    assert!(input.starts_with("sha256:"));
-    assert_eq!(receipt["confirmed_by"], format!("receipt:{input}"));
     Ok(())
 }
 
 #[test]
 fn nested_body_logline_is_invalid_for_receipt_profile() {
     let receipt = serde_json::json!({
-        "receipt_version": "logline-receipt-v0",
+        "receipt_version": "logline.receipt.v0",
         "body": {
             "logline": {
                 "who": "dan",

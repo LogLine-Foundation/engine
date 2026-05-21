@@ -9,7 +9,7 @@ use std::str::FromStr;
 const RUNTIME_NAME: &str = "logline-runtime-rs";
 const RUNTIME_BINARY: &str = "logline";
 const CANON_VERSION: &str = "0.2.0-draft";
-const SUPPORTED_LIPS: [&str; 4] = ["LIP-0003", "LIP-0004", "LIP-0005", "LIP-0006"];
+const SUPPORTED_LIPS: [&str; 4] = ["LIP-0004", "LIP-0005", "LIP-0006", "LIP-0007"];
 const SUPPORTED_FEATURES: [&str; 3] = [
     "canonical_tuple_digest",
     "receipt_encoding_profile",

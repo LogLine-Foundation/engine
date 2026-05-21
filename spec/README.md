@@ -7,7 +7,7 @@ The canon (`LogLine-Foundation/canon`) holds only what is content-frozen and cit
 | file | LIP |
 |---|---|
 | `logline.adapter.v0` | LIP-0004 (adapter protocol) |
-| `logline.adapter-declaration.v0` + `.schema.json` | LIP-0005 (declaration profile) |
+| `logline.adapter-declaration.v0` | LIP-0005 (declaration profile). Schema lives in `conformance/schemas/` (single source of truth). |
 | `logline.adapter-conformance.v0` | LIP-0006 (adapter conformance) |
 | `logline.if-doubt.v0` | LIP-0002 (if-doubt simulation) |
 | `logline.if-doubt-simulation.v0` | LIP-0002 |
