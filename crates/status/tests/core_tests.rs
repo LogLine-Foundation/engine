@@ -1146,6 +1146,432 @@ fn if_doubt_does_not_change_confirmed_by_pivot() -> Result<()> {
 }
 
 #[test]
+fn if_doubt_absorption_holds_across_internal_routes_and_operations() -> Result<()> {
+    let canon = canon()?;
+
+    // Internal doubt-related routes that should maintain absorption
+    let doubt_routes = vec![
+        "simulate",                    // Simulate
+        "emit_simulation_receipt",     // EmitSimulationReceipt
+        "emit_doubt_trace",            // EmitDoubtTrace
+        "propose_possible_world",      // ProposePossibleWorld
+        "ask_for_evidence",            // AskForEvidence
+        "ask",                         // Ask
+        "ask_or_suspend",              // Clarify
+        "suspend",                     // Suspend
+        "ghost_and_clarify",           // Ghost
+        "manual_review",               // ManualReview
+        "dispatch",                    // Dispatch
+    ];
+
+    // Test each route with both walk and run_with_context to ensure absorption
+    for route in doubt_routes {
+        // Test 1: Basic walk operation
+        let logline = LogLine::new(
+            "runtime",
+            "simulate",
+            "candidate_act",
+            "before_release",
+            "missing_evidence",
+            "propose_path",
+            route,
+            "discard",
+            "doubt",
+        );
+
+        let result = walk(&canon, &logline)?;
+
+        // Core absorption assertions
+        assert_eq!(result.selected.branch, Branch::Doubt, "branch should remain Doubt for route: {}", route);
+        assert_eq!(result.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should remain Selected for route: {}", route);
+
+        // Trace absorption
+        if let Some(trace) = &result.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for route: {}", route);
+        }
+
+        // Receipt absorption
+        if let Some(receipt) = &result.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for route: {}", route);
+            assert!(!receipt.released, "simulation_receipt.released should be false for route: {}", route);
+        }
+
+        // No confirmed_by pivot
+        assert_eq!(result.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for route: {}", route);
+        assert_ne!(result.runtime.confirmed_by.next, Some("if_ok".to_string()), "confirmed_by should not pivot to if_ok for route: {}", route);
+
+        // Test 2: run_with_context with Despachar operation
+        let result_with_context = run_with_context(&logline, RunContext::new(&canon, Operation::Despachar))?;
+
+        // Same absorption assertions for context-based execution
+        assert_eq!(result_with_context.selected.branch, Branch::Doubt, "branch should remain Doubt for route: {} with context", route);
+        assert_eq!(result_with_context.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should remain Selected for route: {} with context", route);
+
+        if let Some(trace) = &result_with_context.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for route: {} with context", route);
+        }
+
+        if let Some(receipt) = &result_with_context.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for route: {} with context", route);
+            assert!(!receipt.released, "simulation_receipt.released should be false for route: {} with context", route);
+        }
+
+        assert_eq!(result_with_context.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for route: {} with context", route);
+        assert_ne!(result_with_context.runtime.confirmed_by.next, Some("if_ok".to_string()), "confirmed_by should not pivot to if_ok for route: {} with context", route);
+    }
+
+    // Test receipt-like operations that are not confirmed_by
+    let receipt_like_scenarios = vec![
+        ("simulate", "propose_path", "simulate"),
+        ("emit_simulation_receipt", "propose_path", "emit_simulation_receipt"),
+        ("emit_doubt_trace", "propose_path", "emit_doubt_trace"),
+        ("propose_possible_world", "propose_path", "propose_possible_world"),
+    ];
+
+    for (did, if_ok, if_doubt) in receipt_like_scenarios {
+        let logline = LogLine::new(
+            "runtime",
+            did,
+            "candidate_act",
+            "before_release",
+            "missing_evidence",
+            if_ok,
+            if_doubt,
+            "discard",
+            "doubt",
+        );
+
+        let result = walk(&canon, &logline)?;
+
+        assert_eq!(result.selected.branch, Branch::Doubt, "branch should remain Doubt for receipt-like scenario: {} -> {}", did, if_doubt);
+        assert_eq!(result.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should remain Selected for receipt-like scenario: {} -> {}", did, if_doubt);
+
+        if let Some(trace) = &result.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for receipt-like scenario: {} -> {}", did, if_doubt);
+        }
+
+        if let Some(receipt) = &result.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for receipt-like scenario: {} -> {}", did, if_doubt);
+            assert!(!receipt.released, "simulation_receipt.released should be false for receipt-like scenario: {} -> {}", did, if_doubt);
+        }
+
+        assert_eq!(result.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for receipt-like scenario: {} -> {}", did, if_doubt);
+        assert_ne!(result.runtime.confirmed_by.next, Some("if_ok".to_string()), "confirmed_by should not pivot to if_ok for receipt-like scenario: {} -> {}", did, if_doubt);
+    }
+
+    // Test escalation/replay/observation-like routes
+    let escalation_routes = vec![
+        "manual_review",
+        "ghost_and_clarify",
+        "ask_or_suspend",
+        "dispatch",
+    ];
+
+    for route in escalation_routes {
+        let logline = LogLine::new(
+            "observer",
+            "escalate",
+            "candidate_act",
+            "before_release",
+            "missing_evidence",
+            "propose_path",
+            route,
+            "discard",
+            "doubt",
+        );
+
+        let result = walk(&canon, &logline)?;
+
+        assert_eq!(result.selected.branch, Branch::Doubt, "branch should remain Doubt for escalation route: {}", route);
+        assert_eq!(result.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should remain Selected for escalation route: {}", route);
+
+        if let Some(trace) = &result.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for escalation route: {}", route);
+        }
+
+        if let Some(receipt) = &result.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for escalation route: {}", route);
+            assert!(!receipt.released, "simulation_receipt.released should be false for escalation route: {}", route);
+        }
+
+        assert_eq!(result.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for escalation route: {}", route);
+        assert_ne!(result.runtime.confirmed_by.next, Some("if_ok".to_string()), "confirmed_by should not pivot to if_ok for escalation route: {}", route);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn doubt_cannot_extract_confirmation_from_simulated_or_receipt_like_material() -> Result<()> {
+    let canon = canon()?;
+
+    // Test cases where if_doubt contains material that resembles evidence or release authority
+    // Note: These must be valid doubt routes (or domain routes) to pass validation
+    let fake_evidence_cases = vec![
+        "receipt:abc123",           // Domain route with receipt-like string
+        "signature:fake",           // Domain route with signature-like string
+        "confirmed_by:operator",    // Domain route with confirmed_by-like string
+        "emit_simulation_receipt",  // Valid doubt route
+        "propose_possible_world",   // Valid doubt route
+        "release",                  // Domain route with release-like string
+        "if_ok",                    // Domain route with if_ok-like string
+        "confirmed",                // Domain route with confirmed-like string
+        "authorized",               // Domain route with authorized-like string
+        "signed:xyz",               // Domain route with signed-like string
+        "evidence:present",         // Domain route with evidence-like string
+        "proof:valid",              // Domain route with proof-like string
+    ];
+
+    for fake_evidence in fake_evidence_cases {
+        // Case 1: confirmed_by is missing/unknown - should remain in doubt
+        let logline = LogLine::new(
+            "dan",
+            "send",
+            "invoice_123",
+            "tomorrow",
+            "unknown", // confirmed_by is unknown/invalid
+            "send",
+            fake_evidence, // if_doubt contains fake evidence-like material
+            "reject",
+            "pending",
+        );
+
+        let result = walk(&canon, &logline)?;
+
+        // Core non-extraction assertions
+        assert_eq!(result.selected.branch, Branch::Doubt, "branch should remain Doubt for fake evidence: {}", fake_evidence);
+        assert_eq!(result.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for fake evidence: {}", fake_evidence);
+        assert_eq!(result.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected for fake evidence: {}", fake_evidence);
+        assert_ne!(result.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected for fake evidence: {}", fake_evidence);
+
+        // No transition to Released
+        assert_ne!(result.status.after, "released", "status should not transition to Released for fake evidence: {}", fake_evidence);
+
+        // Trace absorption
+        if let Some(trace) = &result.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for fake evidence: {}", fake_evidence);
+        }
+
+        // Receipt absorption
+        if let Some(receipt) = &result.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for fake evidence: {}", fake_evidence);
+            assert!(!receipt.released, "simulation_receipt.released should be false for fake evidence: {}", fake_evidence);
+        }
+
+        // Case 2: confirmed_by is an invalid token - should remain in doubt
+        let logline_invalid = LogLine::new(
+            "dan",
+            "send",
+            "invoice_123",
+            "tomorrow",
+            "invalid_token", // confirmed_by is invalid
+            "send",
+            fake_evidence,
+            "reject",
+            "pending",
+        );
+
+        let result_invalid = walk(&canon, &logline_invalid)?;
+
+        assert_eq!(result_invalid.selected.branch, Branch::Doubt, "branch should remain Doubt for invalid confirmed_by with fake evidence: {}", fake_evidence);
+        assert_eq!(result_invalid.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for invalid confirmed_by with fake evidence: {}", fake_evidence);
+        assert_eq!(result_invalid.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected for invalid confirmed_by with fake evidence: {}", fake_evidence);
+        assert_ne!(result_invalid.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected for invalid confirmed_by with fake evidence: {}", fake_evidence);
+
+        // Case 3: Test with run_with_context but no provided_evidence
+        let ctx = RunContext::new(&canon, Operation::Despachar);
+        // Do NOT add any evidence to provided_evidence
+        let result_no_evidence = run_with_context(&logline, ctx)?;
+
+        assert_eq!(result_no_evidence.selected.branch, Branch::Doubt, "branch should remain Doubt without provided evidence for fake evidence: {}", fake_evidence);
+        assert_eq!(result_no_evidence.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt without provided evidence for fake evidence: {}", fake_evidence);
+        assert_eq!(result_no_evidence.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected without provided evidence for fake evidence: {}", fake_evidence);
+        assert_ne!(result_no_evidence.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected without provided evidence for fake evidence: {}", fake_evidence);
+    }
+
+    // Positive control: same logline shape with actual required evidence supplied
+    let logline_with_evidence = LogLine::new(
+        "dan",
+        "send",
+        "invoice_123",
+        "tomorrow",
+        "ana", // confirmed_by points to a valid authority
+        "send",
+        "send", // if_ok is send (valid ok route)
+        "reject",
+        "pending",
+    );
+
+    let mut ctx_with_evidence = RunContext::new(&canon, Operation::Confirmar);
+    ctx_with_evidence.provided_evidence.push("ana".to_string()); // Actual required evidence supplied
+    let result_with_evidence = run_with_context(&logline_with_evidence, ctx_with_evidence)?;
+
+    // Positive control should succeed - branch becomes Ok
+    assert_eq!(result_with_evidence.selected.branch, Branch::Ok, "positive control: branch should be Ok with actual evidence");
+    assert_eq!(result_with_evidence.runtime.confirmed_by.resolution, SlotResolution::Ok, "positive control: confirmed_by should be Ok with actual evidence");
+    assert_eq!(result_with_evidence.runtime.if_ok.resolution, SlotResolution::Selected, "positive control: if_ok should be Selected with actual evidence");
+    assert_eq!(result_with_evidence.status.after, "confirmed", "positive control: status should be confirmed with actual evidence");
+
+    // Additional positive control: even with fake evidence in if_doubt, real evidence in provided_evidence should work
+    let logline_mixed = LogLine::new(
+        "dan",
+        "send",
+        "invoice_123",
+        "tomorrow",
+        "ana", // confirmed_by points to valid authority
+        "send",
+        "receipt:fake", // if_doubt contains fake evidence
+        "reject",
+        "pending",
+    );
+
+    let mut ctx_mixed = RunContext::new(&canon, Operation::Confirmar);
+    ctx_mixed.provided_evidence.push("ana".to_string()); // Real evidence supplied
+    let result_mixed = run_with_context(&logline_mixed, ctx_mixed)?;
+
+    // Should succeed because real evidence is provided, not because of fake evidence in if_doubt
+    assert_eq!(result_mixed.selected.branch, Branch::Ok, "mixed case: branch should be Ok with real evidence despite fake in if_doubt");
+    assert_eq!(result_mixed.runtime.confirmed_by.resolution, SlotResolution::Ok, "mixed case: confirmed_by should be Ok with real evidence");
+    assert_eq!(result_mixed.runtime.if_ok.resolution, SlotResolution::Selected, "mixed case: if_ok should be Selected with real evidence");
+
+    Ok(())
+}
+
+#[test]
+fn possible_world_generation_does_not_collapse_into_fact() -> Result<()> {
+    let canon = canon()?;
+
+    // Test cases where if_doubt contains possible-world / modal / generated-world language
+    // Note: These must be valid doubt routes (or domain routes) to pass validation
+    let possible_world_cases = vec![
+        "propose_possible_world",      // Valid doubt route
+        "possible_world:if_ok",        // Domain route with possible-world language
+        "possible_world:execute",     // Domain route with possible-world language
+        "generated_logline",           // Domain route with generated-world language
+        "candidate_if_ok",             // Domain route with candidate language
+        "simulate_release",            // Domain route with simulation language
+        "world_where_evidence_exists",  // Domain route with counterfactual language
+        "counterfactual_receipt",      // Domain route with counterfactual language
+    ];
+
+    for possible_world in possible_world_cases {
+        // Case 1: confirmed_by is missing/unknown with tempting if_ok route
+        let logline = LogLine::new(
+            "runtime",
+            "generate",
+            "candidate_act",
+            "in_possible_world",
+            "unknown", // confirmed_by is unknown/invalid
+            "execute", // if_ok is populated with tempting release route
+            possible_world, // if_doubt contains modal/counterfactual material
+            "reject",
+            "pending",
+        );
+
+        let result = walk(&canon, &logline)?;
+
+        // Core modal non-collapse assertions
+        assert_eq!(result.selected.branch, Branch::Doubt, "branch should remain Doubt for possible-world material: {}", possible_world);
+        assert_eq!(result.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected for possible-world material: {}", possible_world);
+        assert_ne!(result.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected for possible-world material: {}", possible_world);
+        assert_eq!(result.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for possible-world material: {}", possible_world);
+
+        // No status transition to Released
+        assert_ne!(result.status.after, "released", "status should not transition to Released for possible-world material: {}", possible_world);
+
+        // Trace absorption when applicable
+        if let Some(trace) = &result.doubt_trace {
+            assert!(!trace.released, "doubt_trace.released should be false for possible-world material: {}", possible_world);
+        }
+
+        // Receipt absorption when present
+        if let Some(receipt) = &result.simulation_receipt {
+            assert!(!receipt.executed, "simulation_receipt.executed should be false for possible-world material: {}", possible_world);
+            assert!(!receipt.released, "simulation_receipt.released should be false for possible-world material: {}", possible_world);
+        }
+
+        // Case 2: confirmed_by is invalid token with tempting if_ok route
+        let logline_invalid = LogLine::new(
+            "runtime",
+            "generate",
+            "candidate_act",
+            "in_possible_world",
+            "invalid_token", // confirmed_by is invalid
+            "release", // if_ok is populated with tempting release route
+            possible_world,
+            "reject",
+            "pending",
+        );
+
+        let result_invalid = walk(&canon, &logline_invalid)?;
+
+        assert_eq!(result_invalid.selected.branch, Branch::Doubt, "branch should remain Doubt for invalid confirmed_by with possible-world material: {}", possible_world);
+        assert_eq!(result_invalid.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected for invalid confirmed_by with possible-world material: {}", possible_world);
+        assert_ne!(result_invalid.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected for invalid confirmed_by with possible-world material: {}", possible_world);
+        assert_eq!(result_invalid.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt for invalid confirmed_by with possible-world material: {}", possible_world);
+
+        // Case 3: Test with run_with_context but no provided_evidence
+        let ctx = RunContext::new(&canon, Operation::Despachar);
+        // Do NOT add any evidence to provided_evidence
+        let result_no_evidence = run_with_context(&logline, ctx)?;
+
+        assert_eq!(result_no_evidence.selected.branch, Branch::Doubt, "branch should remain Doubt without provided evidence for possible-world material: {}", possible_world);
+        assert_eq!(result_no_evidence.runtime.if_doubt.resolution, SlotResolution::Selected, "if_doubt should be Selected without provided evidence for possible-world material: {}", possible_world);
+        assert_ne!(result_no_evidence.runtime.if_ok.resolution, SlotResolution::Selected, "if_ok should NOT be Selected without provided evidence for possible-world material: {}", possible_world);
+        assert_eq!(result_no_evidence.runtime.confirmed_by.resolution, SlotResolution::Doubt, "confirmed_by should remain Doubt without provided evidence for possible-world material: {}", possible_world);
+    }
+
+    // Positive control: same possible-world material in if_doubt with actual required evidence
+    let logline_with_evidence = LogLine::new(
+        "runtime",
+        "generate",
+        "candidate_act",
+        "in_possible_world",
+        "ana", // confirmed_by points to a valid authority
+        "execute", // if_ok is execute
+        "propose_possible_world", // if_doubt contains possible-world material
+        "reject",
+        "pending",
+    );
+
+    let mut ctx_with_evidence = RunContext::new(&canon, Operation::Confirmar);
+    ctx_with_evidence.provided_evidence.push("ana".to_string()); // Actual required evidence supplied
+    let result_with_evidence = run_with_context(&logline_with_evidence, ctx_with_evidence)?;
+
+    // Positive control should succeed - branch becomes Ok
+    assert_eq!(result_with_evidence.selected.branch, Branch::Ok, "positive control: branch should be Ok with actual evidence despite possible-world in if_doubt");
+    assert_eq!(result_with_evidence.runtime.confirmed_by.resolution, SlotResolution::Ok, "positive control: confirmed_by should be Ok with actual evidence");
+    assert_eq!(result_with_evidence.runtime.if_ok.resolution, SlotResolution::Selected, "positive control: if_ok should be Selected with actual evidence");
+    assert_ne!(result_with_evidence.runtime.if_doubt.resolution, SlotResolution::Selected, "positive control: if_doubt should NOT be Selected with actual evidence");
+    assert_eq!(result_with_evidence.status.after, "confirmed", "positive control: status should be confirmed with actual evidence");
+
+    // Additional positive control: different possible-world material with real evidence
+    let logline_mixed = LogLine::new(
+        "runtime",
+        "generate",
+        "candidate_act",
+        "in_possible_world",
+        "ana", // confirmed_by points to valid authority
+        "release", // if_ok is release
+        "counterfactual_receipt", // if_doubt contains counterfactual material
+        "reject",
+        "pending",
+    );
+
+    let mut ctx_mixed = RunContext::new(&canon, Operation::Confirmar);
+    ctx_mixed.provided_evidence.push("ana".to_string()); // Real evidence supplied
+    let result_mixed = run_with_context(&logline_mixed, ctx_mixed)?;
+
+    // Should succeed because real evidence is provided, not because of possible-world material in if_doubt
+    assert_eq!(result_mixed.selected.branch, Branch::Ok, "mixed case: branch should be Ok with real evidence despite counterfactual in if_doubt");
+    assert_eq!(result_mixed.runtime.confirmed_by.resolution, SlotResolution::Ok, "mixed case: confirmed_by should be Ok with real evidence");
+    assert_eq!(result_mixed.runtime.if_ok.resolution, SlotResolution::Selected, "mixed case: if_ok should be Selected with real evidence");
+    assert_ne!(result_mixed.runtime.if_doubt.resolution, SlotResolution::Selected, "mixed case: if_doubt should NOT be Selected with real evidence");
+
+    Ok(())
+}
+
+#[test]
 fn rejection_route_classifies_problem_routes() {
     let reject = RejectionRoute::parse("reject");
     assert_eq!(reject.kind, RejectionKind::Reject);
