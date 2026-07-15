@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "logline-pocket-runtime"
+version = "0.1.0"
+dependencies = [
+ "logline-who",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "logline-status"
 version = "0.1.0"
 dependencies = [

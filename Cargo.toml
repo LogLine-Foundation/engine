@@ -11,6 +11,7 @@ members = [
     "crates/if_not",
     "crates/status",
     "crates/logline-cli",
+    "crates/logline-pocket-runtime",
 ]
 
 [workspace.package]

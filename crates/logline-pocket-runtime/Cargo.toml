@@ -1,0 +1,18 @@
+[package]
+name = "logline-pocket-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pocket Runtime guard for LLM translation drafts. Reduces entropy before canon. Does not become canon. Does not emit canonical receipts. Does not admit runtime actions. (LIP-0008)"
+
+[lib]
+name = "logline_pocket_runtime"
+path = "src/lib.rs"
+
+[dependencies]
+logline-who = { path = "../who" }
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
